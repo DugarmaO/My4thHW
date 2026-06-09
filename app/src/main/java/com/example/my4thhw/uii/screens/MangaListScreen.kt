@@ -20,6 +20,11 @@ import androidx.compose.ui.unit.dp
 import com.example.my4thhw.uii.MangaListUiState
 import com.example.my4thhw.uii.widgets.MangaCard
 import com.example.my4thhw.model.Manga
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.Icon
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.outlined.FavoriteBorder
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MangaListScreen(
@@ -27,11 +32,25 @@ fun MangaListScreen(
     onSearchChange: (String) -> Unit,
     onItemClick: (Int) -> Unit,
     onFavoriteClick: (Manga) -> Unit,
-    onRetry: () -> Unit
+    onRetry: () -> Unit,
+    onToggleFavourites: () -> Unit,
 ) {
     Scaffold(
         topBar = {
-            TopAppBar(title = { Text("Manga") })
+            TopAppBar(
+                title = { Text(if (ui.showFavourites) "Избранное" else "Manga") },
+                actions = {
+                    IconButton(onClick = onToggleFavourites) {
+                        Icon(
+                            imageVector = if (ui.showFavourites)
+                                Icons.Filled.Favorite
+                            else
+                                Icons.Outlined.FavoriteBorder,
+                            contentDescription = "Показать избранное"
+                        )
+                    }
+                }
+            )
         }
     ) { padding ->
 
@@ -40,37 +59,24 @@ fun MangaListScreen(
                 .padding(padding)
                 .padding(16.dp)
         ) {
-            OutlinedTextField(
-                value = ui.query,
-                onValueChange = onSearchChange,
-                modifier = Modifier.fillMaxWidth(),
-                label = { Text("Search") }
-            )
+            if (!ui.showFavourites) {
+                OutlinedTextField(
+                    value = ui.query,
+                    onValueChange = onSearchChange,
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text("Search") }
+                )
 
-            Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(12.dp))
+            }
 
-            when {
-                ui.isLoading -> {
-                    CircularProgressIndicator()
-                }
-
-                ui.isError -> {
-                    Column {
-                        Text("Ошибка загрузки")
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Button(onClick = onRetry) {
-                            Text("Retry")
-                        }
-                    }
-                }
-
-                ui.items.isEmpty() -> {
-                    Text("Ничего не найдено")
-                }
-                else -> {
+            if (ui.showFavourites) {
+                if (ui.favouriteList.isEmpty()) {
+                    Text("Нет сохранённой манги")
+                } else {
                     LazyColumn {
                         items(
-                            items = ui.items,
+                            items = ui.favouriteList,
                             key = { it.id }
                         ) { manga ->
                             MangaCard(
@@ -78,6 +84,40 @@ fun MangaListScreen(
                                 onClick = { onItemClick(manga.id) },
                                 onFavoriteClick = { onFavoriteClick(manga) }
                             )
+                        }
+                    }
+                }
+            } else {
+                when {
+                    ui.isLoading -> {
+                        CircularProgressIndicator()
+                    }
+
+                    ui.isError -> {
+                        Column {
+                            Text("Ошибка загрузки")
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Button(onClick = onRetry) {
+                                Text("Retry")
+                            }
+                        }
+                    }
+
+                    ui.items.isEmpty() -> {
+                        Text("Ничего не найдено")
+                    }
+                    else -> {
+                        LazyColumn {
+                            items(
+                                items = ui.items,
+                                key = { it.id }
+                            ) { manga ->
+                                MangaCard(
+                                    manga = manga,
+                                    onClick = { onItemClick(manga.id) },
+                                    onFavoriteClick = { onFavoriteClick(manga) }
+                                )
+                            }
                         }
                     }
                 }

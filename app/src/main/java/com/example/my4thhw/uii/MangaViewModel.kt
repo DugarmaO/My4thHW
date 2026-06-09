@@ -12,7 +12,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 import kotlin.coroutines.cancellation.CancellationException
-
+import com.example.my4thhw.model.MangaDetails
 @HiltViewModel
 class MangaViewModel @Inject constructor(
     private val repository: MangaRepository
@@ -25,6 +25,7 @@ class MangaViewModel @Inject constructor(
     val detailsState = _detailsState.asStateFlow()
 
     private var listJob: Job? = null
+    private var detailsJob: Job? = null
 
     init {
         loadFavourites()
@@ -46,7 +47,6 @@ class MangaViewModel @Inject constructor(
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                _uiState.value = _uiState.value.copy(isError = true)
             }
         }
     }
@@ -66,6 +66,8 @@ class MangaViewModel @Inject constructor(
                     isLoading = false,
                     items = result
                 )
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
@@ -82,7 +84,6 @@ class MangaViewModel @Inject constructor(
         listJob?.cancel()
 
         if (query.isBlank()) {
-            loadFavourites()
             loadInitial()
             return
         }
@@ -100,6 +101,8 @@ class MangaViewModel @Inject constructor(
                     isLoading = false,
                     items = result
                 )
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
@@ -110,36 +113,56 @@ class MangaViewModel @Inject constructor(
         }
     }
 
+    fun toggleShowFavourites() {
+        _uiState.value = _uiState.value.copy(
+            showFavourites = !_uiState.value.showFavourites
+        )
+    }
     fun onFavouriteClick(manga: Manga) {
         viewModelScope.launch {
             try {
                 repository.toggleFavourite(manga)
-
-                val favourites = repository.getFavourites()
-                val favouriteIds = favourites.map { it.id }.toSet()
-
-                _uiState.value = _uiState.value.copy(
-                    favouriteList = favourites,
-                    items = uiState.value.items.map { current ->
-                        current.copy(isFavourite = current.id in favouriteIds)
-                    }
-                )
+                loadFavourites()
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                _uiState.value = _uiState.value.copy(isError = true)
+            }
+        }
+    }
+    fun onFavouriteToggle(manga: MangaDetails) {
+        viewModelScope.launch {
+            try {
+                repository.toggleFavourite(manga)
+                loadFavourites()
+                val isFav = repository.isFavourite(manga.id)
+                val current = _detailsState.value
+                if (current is MangaDetailsUiState.Success) {
+                    _detailsState.value = current.copy(isFavourite = isFav)
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
             }
         }
     }
 
     fun loadDetails(id: Int) {
-        viewModelScope.launch {
+        detailsJob?.cancel()
+        detailsJob = viewModelScope.launch {
             _detailsState.value = MangaDetailsUiState.Loading
             try {
                 val result = repository.getDetails(id)
-                _detailsState.value = MangaDetailsUiState.Success(result)
+                val isFav = repository.isFavourite(id)
+                _detailsState.value = MangaDetailsUiState.Success(result, isFav)
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
-                _detailsState.value = MangaDetailsUiState.Error("Ошибка загрузки")
+                val cached = repository.getDetailsFromCache(id)
+                if (cached != null) {
+                    _detailsState.value = MangaDetailsUiState.Success(cached, isFavourite = true)
+                } else {
+                    _detailsState.value = MangaDetailsUiState.Error("Ошибка загрузки")
+                }
             }
         }
     }

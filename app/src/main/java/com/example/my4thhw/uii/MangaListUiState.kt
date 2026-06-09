@@ -7,5 +7,6 @@ data class MangaListUiState(
     val items: List<Manga> = emptyList(),
     val favouriteList: List<Manga> = emptyList(),
     val query: String = "",
-    val isError: Boolean = false
+    val isError: Boolean = false,
+    val showFavourites: Boolean = false,
 )

@@ -11,6 +11,9 @@ interface MangaDao {
     @Query("SELECT * FROM favourite_manga ORDER BY title")
     suspend fun getFavourites(): List<FavoriteMangaEntity>
 
+    @Query("SELECT * FROM favourite_manga WHERE id = :id")
+    suspend fun getById(id: Int): FavoriteMangaEntity?
+
     @Query("SELECT id FROM favourite_manga")
     suspend fun getFavouritesIds(): List<Int>
 

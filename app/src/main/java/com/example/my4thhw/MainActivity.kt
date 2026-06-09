@@ -10,7 +10,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
-import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -21,6 +20,7 @@ import com.example.my4thhw.uii.MangaViewModel
 import com.example.my4thhw.uii.screens.MangaDetailsScreen
 import com.example.my4thhw.uii.screens.MangaListScreen
 import dagger.hilt.android.AndroidEntryPoint
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
@@ -45,7 +45,7 @@ object Routes {
 
 @androidx.compose.runtime.Composable
 fun MangaApp() {
-    val vm: MangaViewModel = viewModel()
+    val vm: MangaViewModel = hiltViewModel()
     val navController = rememberNavController()
 
     NavHost(
@@ -58,15 +58,14 @@ fun MangaApp() {
             MangaListScreen(
                 ui = ui,
                 onSearchChange = vm::onSearchChange,
-                onItemClick = { id ->
-                    navController.navigate(Routes.details(id))
-                },
+                onItemClick = { id -> navController.navigate(Routes.details(id)) },
                 onFavoriteClick = vm::onFavouriteClick,
                 onRetry = {
                     val query = vm.uiState.value.query
                     if (query.isBlank()) vm.loadInitial()
                     else vm.onSearchChange(query)
-                }
+                },
+                onToggleFavourites = vm::toggleShowFavourites,
             )
         }
 
@@ -84,7 +83,8 @@ fun MangaApp() {
             MangaDetailsScreen(
                 ui = detailsState,
                 onBack = { navController.navigateUp() },
-                onRetry = { vm.loadDetails(id) }
+                onRetry = { vm.loadDetails(id) },
+                onFavoriteToggle = vm::onFavouriteToggle,
             )
         }
     }
